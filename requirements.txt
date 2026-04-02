@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────
+#  Core — Google APIs, DB, Env
+# ─────────────────────────────────────────────
+google-auth==2.28.1
+google-auth-oauthlib==1.2.0
+google-api-python-client==2.118.0
+mysql-connector-python==8.3.0
+python-dotenv==1.0.1
+
+# ─────────────────────────────────────────────
+#  Browser Automation — Camoufox
+#  (selenium, undetected-chromedriver, playwright-stealth устгасан)
+# ─────────────────────────────────────────────
+camoufox[geoip]        # Cloudflare bypass + fingerprint spoofing
+playwright>=1.42.0     # Camoufox-ийн доод давхарга
+
+# ─────────────────────────────────────────────
+#  GCP / VM headless орчин
+#  pyvirtualdisplay-г Xvfb-ээр орлуулсан тул хэрэггүй болсон.
+#  Гэхдээ Python-оор Xvfb удирдахыг хүсвэл үлдээнэ:
+# xvfbwrapper              # хөнгөн Xvfb wrapper (сонголт)
+# ─────────────────────────────────────────────
