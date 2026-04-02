@@ -1,0 +1,18 @@
+# Нууц мэдээлэл — хэзээ ч commit хийхгүй
+credentials.json
+.env
+*.json.key
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Browser profiles / debug
+chrome_profile/
+*.png
+
+# OS
+.DS_Store
