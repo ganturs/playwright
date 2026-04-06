@@ -11,7 +11,7 @@ __pycache__/
 venv/
 
 # Browser profiles / debug
-chrome_profile/
+# chrome_profile/
 *.png
 
 # OS
