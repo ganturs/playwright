@@ -14,6 +14,7 @@ Proxy тохируулах (proxies.txt):
 """
 
 import sys
+import time
 import queue
 import threading
 from src.config import WORKER_COUNT, GOOGLE_CONCURRENT, CHATGPT_CONCURRENT, load_proxies, DELAY_BETWEEN_PROMPTS
@@ -164,6 +165,7 @@ def main():
         )
         threads.append(t)
         t.start()
+        time.sleep(5)  # Браузер аажмаар эхлүүлж CPU spike-аас зайлсхийнэ
 
     # Бүх thread дуусахыг хүлээх
     for t in threads:

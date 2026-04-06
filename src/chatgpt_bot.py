@@ -48,10 +48,18 @@ SELECTORS = {
     "stop_btn": [
         "button[data-testid='stop-button']",
         "button[aria-label='Stop streaming']",
+        "[aria-label='Stop generating']",
+        "button.stop-button",
+        "button:has-text('Stop')",
     ],
     "response": [
         "div[data-message-author-role='assistant'] .markdown",
+        "div[data-message-author-role='assistant'] .prose",
         "div[data-message-author-role='assistant']",
+        "[data-testid='conversation-turn']:last-child .markdown",
+        "[data-testid='conversation-turn']:last-child",
+        "article:last-child .markdown",
+        "article:last-child",
     ],
     "cookie_btns": [
         "button:has-text('Accept all')",
@@ -204,20 +212,20 @@ async def send_prompt(page: Page, prompt: str) -> str:
 
     if not stop_appeared:
         # Stop button харагдаагүй — хариулт ирсэн эсэхийг хүлээнэ
-        await asyncio.sleep(15)
+        await asyncio.sleep(20)
 
     # Алхам 6: Сүүлийн хариулт авах (retry хийнэ)
-    for attempt in range(3):
+    for attempt in range(5):
         for sel in SELECTORS["response"]:
             try:
                 items = await page.query_selector_all(sel)
                 if items:
                     text = await items[-1].inner_text()
-                    if text and text.strip():
+                    if text and text.strip() and len(text.strip()) > 10:
                         return text.strip()
             except Exception:
                 continue
-        await asyncio.sleep(1)  # 3 → 1с
+        await asyncio.sleep(2)
 
     await page.screenshot(path="debug_chatgpt_empty.png")
     return ""
@@ -332,6 +340,14 @@ class ChatGPTBot:
 
         self._page = await self._context.new_page()
         self._auth_file = auth_file
+
+        # Шаардлагагүй resource блоклох — CPU/RAM хэмнэнэ
+        async def block_resources(route):
+            if route.request.resource_type in ("image", "media", "font", "stylesheet"):
+                await route.abort()
+            else:
+                await route.continue_()
+        await self._page.route("**/*", block_resources)
 
         print(f"{tag} {CHATGPT_URL} руу очиж байна...")
         await self._page.goto(CHATGPT_URL, wait_until="domcontentloaded", timeout=60000)
