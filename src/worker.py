@@ -12,10 +12,12 @@ Proxy Rotation:
     ChatGPT үргэлж шууд холболт ашиглана (proxy=None).
 """
 
+import time
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from src.chatgpt_bot import ChatGPTBot
 from src.google_scraper import GoogleScraper
+from src.config import DELAY_BETWEEN_PROMPTS
 
 
 class Worker:
@@ -100,6 +102,10 @@ class Worker:
                 self._rotate_proxy()
 
         self._request_count += 1
+
+        # Prompt хооронд throttle — CPU spike багасгана
+        if self._request_count > 1 and DELAY_BETWEEN_PROMPTS > 0:
+            time.sleep(DELAY_BETWEEN_PROMPTS)
 
         if self.google_enabled:
             g_future = self._executor.submit(self._google_search_safe, prompt)
