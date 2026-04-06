@@ -339,15 +339,10 @@ class ChatGPTBot:
         await wait_cloudflare_pass(self._page, timeout=90)
         await clear_modals(self._page)
 
-        if not await is_logged_in(self._page):
-            if HEADLESS:
-                raise RuntimeError(
-                    f"{tag} Нэвтрээгүй байна! Эхлээд setup.py ажиллуулж worker {self.worker_id}-д нэвтэрнэ үү."
-                )
-            else:
-                print(f"{tag} Гараар нэвтэрнэ үү. Нэвтэрсний дараа Enter дарна уу...")
-                input("  [Enter дарна уу] ")
-                await self._save_auth()
+        if await is_logged_in(self._page):
+            print(f"{tag} Нэвтэрсэн session ✓")
+        else:
+            print(f"{tag} Нэвтрэхгүйгээр ажиллана (5 хүсэлт/IP).")
 
         await self._page.screenshot(path=f"debug_ready_worker{self.worker_id}.png")
         print(f"{tag} Бэлэн болоо ✓")
