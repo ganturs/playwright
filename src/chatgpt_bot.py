@@ -153,8 +153,7 @@ async def human_type(page: Page, selector: str, text: str):
 
 async def send_prompt(page: Page, prompt: str) -> str:
     """Промпт илгээж, хариулт авна"""
-    # Алхам 1: Шинэ chat нээх — DOM цэвэрлэж memory/CPU хэмнэнэ
-    await page.goto("https://chatgpt.com/", wait_until="domcontentloaded", timeout=30000)
+    # Алхам 1: Cloudflare болон modal цэвэрлэх
     await wait_cloudflare_pass(page)
     await clear_modals(page)
 
