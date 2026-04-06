@@ -13,7 +13,6 @@ HTML = """
 <html lang="mn">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="10">
   <title>Crawler Dashboard</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,13 +43,13 @@ HTML = """
 </head>
 <body>
   <h1>Crawler Dashboard</h1>
-  <p class="updated">10 секунд тутам шинэчлэгдэнэ</p>
+  <p class="updated" id="updated">Шинэчлэж байна...</p>
   <div class="cards">
-    <div class="card"><div class="num total">{{ stats.total }}</div><div class="label">Нийт</div></div>
-    <div class="card"><div class="num done">{{ stats.done }}</div><div class="label">Амжилттай</div></div>
-    <div class="card"><div class="num error">{{ stats.error }}</div><div class="label">Алдаа</div></div>
-    <div class="card"><div class="num pending">{{ stats.pending }}</div><div class="label">Хүлээгдэж буй</div></div>
-    <div class="card"><div class="num total">{{ stats.progress }}%</div><div class="label">Гүйцэтгэл</div></div>
+    <div class="card"><div class="num total" id="c-total">-</div><div class="label">Нийт</div></div>
+    <div class="card"><div class="num done" id="c-done">-</div><div class="label">Амжилттай</div></div>
+    <div class="card"><div class="num error" id="c-error">-</div><div class="label">Алдаа</div></div>
+    <div class="card"><div class="num pending" id="c-pending">-</div><div class="label">Хүлээгдэж буй</div></div>
+    <div class="card"><div class="num total" id="c-progress">-</div><div class="label">Гүйцэтгэл</div></div>
   </div>
   <table>
     <thead>
@@ -62,50 +61,94 @@ HTML = """
         <th>Огноо</th>
       </tr>
     </thead>
-    <tbody>
-      {% for r in rows %}
-      <tr>
-        <td>{{ r.sheet_row }}</td>
-        <td title="{{ r.prompt }}">{{ r.prompt[:60] }}{% if r.prompt|length > 60 %}...{% endif %}</td>
-        <td title="{{ r.response }}">{{ (r.response or '')[:80] }}{% if (r.response or '')|length > 80 %}...{% endif %}</td>
-        <td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td>
-        <td>{{ r.created_at }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
+    <tbody id="tbody"></tbody>
   </table>
+
+  <script>
+    let knownIds = new Set();
+
+    function updateStats(stats) {
+      document.getElementById('c-total').textContent = stats.total;
+      document.getElementById('c-done').textContent = stats.done;
+      document.getElementById('c-error').textContent = stats.error;
+      document.getElementById('c-pending').textContent = stats.pending;
+      document.getElementById('c-progress').textContent = stats.progress + '%';
+    }
+
+    function addRows(rows) {
+      const tbody = document.getElementById('tbody');
+      rows.forEach(r => {
+        if (knownIds.has(r.sheet_row)) return;
+        knownIds.add(r.sheet_row);
+        const tr = document.createElement('tr');
+        const prompt = r.prompt ? r.prompt.substring(0, 60) + (r.prompt.length > 60 ? '...' : '') : '';
+        const response = r.response ? r.response.substring(0, 80) + (r.response.length > 80 ? '...' : '') : '';
+        tr.innerHTML = `
+          <td>${r.sheet_row}</td>
+          <td title="${r.prompt || ''}">${prompt}</td>
+          <td title="${r.response || ''}">${response}</td>
+          <td><span class="badge badge-${r.status}">${r.status}</span></td>
+          <td>${r.created_at || ''}</td>
+        `;
+        tbody.insertBefore(tr, tbody.firstChild);
+      });
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch('/api/all');
+        const data = await res.json();
+        updateStats(data.stats);
+        addRows(data.rows);
+        const now = new Date().toLocaleTimeString();
+        document.getElementById('updated').textContent = 'Сүүлд шинэчлэгдсэн: ' + now;
+      } catch(e) {}
+    }
+
+    refresh();
+    setInterval(refresh, 10000);
+  </script>
 </body>
 </html>
 """
 
 
-def get_stats():
+def get_data():
     conn = get_connection()
     cur = conn.cursor(dictionary=True)
     cur.execute("SELECT COUNT(*) as total FROM responses")
     total = cur.fetchone()["total"]
     cur.execute("SELECT status, COUNT(*) as cnt FROM responses GROUP BY status")
     counts = {r["status"]: r["cnt"] for r in cur.fetchall()}
-    cur.execute("SELECT sheet_row, prompt, response, status, created_at FROM responses ORDER BY id DESC LIMIT 50")
+    cur.execute("SELECT sheet_row, prompt, response, status, created_at FROM responses ORDER BY id DESC LIMIT 100")
     rows = cur.fetchall()
+    for r in rows:
+        if r.get("created_at"):
+            r["created_at"] = str(r["created_at"])
     cur.close()
     conn.close()
     done = counts.get("done", 0)
     error = counts.get("error", 0)
     pending = total - done - error
     progress = round(done / total * 100, 1) if total > 0 else 0
-    return {"total": total, "done": done, "error": error, "pending": pending, "progress": progress}, rows
+    stats = {"total": total, "done": done, "error": error, "pending": pending, "progress": progress}
+    return stats, rows
 
 
 @app.route("/")
 def index():
-    stats, rows = get_stats()
-    return render_template_string(HTML, stats=stats, rows=rows)
+    return render_template_string(HTML)
+
+
+@app.route("/api/all")
+def api_all():
+    stats, rows = get_data()
+    return jsonify({"stats": stats, "rows": rows})
 
 
 @app.route("/api/stats")
 def api_stats():
-    stats, _ = get_stats()
+    stats, _ = get_data()
     return jsonify(stats)
 
 
