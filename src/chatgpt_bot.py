@@ -153,7 +153,8 @@ async def human_type(page: Page, selector: str, text: str):
 
 async def send_prompt(page: Page, prompt: str) -> str:
     """Промпт илгээж, хариулт авна"""
-    # Алхам 1: Cloudflare болон modal цэвэрлэх
+    # Алхам 1: Шинэ chat нээх — DOM цэвэрлэж memory/CPU хэмнэнэ
+    await page.goto("https://chatgpt.com/", wait_until="domcontentloaded", timeout=30000)
     await wait_cloudflare_pass(page)
     await clear_modals(page)
 
@@ -161,7 +162,7 @@ async def send_prompt(page: Page, prompt: str) -> str:
     input_box = None
     for sel in SELECTORS["input"]:
         try:
-            input_box = await page.wait_for_selector(sel, timeout=10000)
+            input_box = await page.wait_for_selector(sel, timeout=5000)
             if input_box:
                 break
         except Exception:
