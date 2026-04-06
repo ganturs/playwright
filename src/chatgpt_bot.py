@@ -342,8 +342,19 @@ class ChatGPTBot:
         self._auth_file = auth_file
 
         # Шаардлагагүй resource блоклох — CPU/RAM хэмнэнэ
+        BLOCKED_DOMAINS = (
+            "google-analytics.com", "googletagmanager.com",
+            "segment.io", "segment.com", "sentry.io",
+            "hotjar.com", "intercom.io", "mixpanel.com",
+            "amplitude.com", "statsig.com", "featuregates.org",
+            "browser-intake-datadoghq.com", "datadoghq.com",
+        )
         async def block_resources(route):
-            if route.request.resource_type in ("image", "media", "font", "stylesheet"):
+            url = route.request.url
+            rtype = route.request.resource_type
+            if rtype in ("image", "media", "font", "stylesheet"):
+                await route.abort()
+            elif any(d in url for d in BLOCKED_DOMAINS):
                 await route.abort()
             else:
                 await route.continue_()
