@@ -103,12 +103,16 @@ class ChatGPTBot:
             try:
                 cookies = json.load(open(auth_file)).get("cookies", [])
                 for c in cookies:
-                    await self._browser.cookies.set(
-                        name=c["name"], value=c["value"],
+                    await self._page.send(
+                        "Network.setCookie",
+                        name=c["name"],
+                        value=c["value"],
                         domain=c.get("domain", ".chatgpt.com"),
                         path=c.get("path", "/"),
+                        httpOnly=c.get("httpOnly", False),
+                        secure=c.get("secure", False),
                     )
-                await self._page.reload()
+                await self._page.get(CHATGPT_URL)
                 await asyncio.sleep(2)
                 print(f"{tag} Cookies load хийлээ ✓")
             except Exception as e:
