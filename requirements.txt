@@ -12,8 +12,9 @@ python-dotenv==1.0.1
 #  Browser Automation — Camoufox
 #  (selenium, undetected-chromedriver, playwright-stealth устгасан)
 # ─────────────────────────────────────────────
-camoufox[geoip]        # Cloudflare bypass + fingerprint spoofing
-playwright>=1.42.0     # Camoufox-ийн доод давхарга
+camoufox[geoip]        # Google scraping
+playwright>=1.42.0     # Camoufox dependency
+nodriver               # ChatGPT bot - Chrome based, low CPU
 
 # ─────────────────────────────────────────────
 #  GCP / VM headless орчин
