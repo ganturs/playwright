@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────
+#  Rotating Proxy тохиргоо
+#  Файлыг proxies.txt нэрээр хуулж ашиглана:
+#    cp proxies.txt.example proxies.txt
+# ─────────────────────────────────────────────
+#
+#  Rotating proxy = нэг endpoint, IP автоматаар солигдоно
+#  Worker тус бүрд нэг мөр бичнэ
+#
+# ── BrightData (Luminati) ───────────────────
+# Sticky session — N минут/хүсэлт тутам IP солих
+# Dashboard: Zone → Residential → Rotation: Every N requests
+#
+# http://user-zone-residential-session-worker0:pass@zproxy.lum-superproxy.io:22225
+# http://user-zone-residential-session-worker1:pass@zproxy.lum-superproxy.io:22225
+#
+# ── Oxylabs ─────────────────────────────────
+# http://user_session-worker0:pass@pr.oxylabs.io:7777
+# http://user_session-worker1:pass@pr.oxylabs.io:7777
+#
+# ── Smartproxy ──────────────────────────────
+# http://user-session-worker0:pass@gate.smartproxy.com:10000
+# http://user-session-worker1:pass@gate.smartproxy.com:10000
+#
+# ─────────────────────────────────────────────
+#  Жишээ (worker 10 бол 10 мөр):
+# ─────────────────────────────────────────────
+
+http://username:password@rotating-proxy-host:port
+http://username:password@rotating-proxy-host:port
