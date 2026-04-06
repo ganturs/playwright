@@ -286,7 +286,7 @@ class ChatGPTBot:
 
         self._browser = AsyncCamoufox(
             headless=True,
-            geoip=True,
+            geoip=False,
             os="windows",
             block_images=False,
             **({"proxy": proxy_config} if proxy_config else {}),
