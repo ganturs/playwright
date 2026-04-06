@@ -238,19 +238,41 @@ class ChatGPTBot:
         bot.close()
     """
 
-    def __init__(self, worker_id: int = 0, proxy: str = None):
+    def __init__(self, worker_id: int = 0, proxy: str = None,
+                 proxy_list: list = None, rotate_every: int = 5):
         self.worker_id = worker_id
         self.proxy = proxy
+        self._proxy_list = proxy_list or ([proxy] if proxy else [])
+        self._rotate_every = rotate_every
+        self._proxy_index = 0
+        self._request_count = 0
         self._browser = None
         self._context = None
         self._page = None
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
 
+    def _current_proxy(self) -> str | None:
+        if not self._proxy_list:
+            return None
+        return self._proxy_list[self._proxy_index % len(self._proxy_list)]
+
     # ── Нийтийн интерфэйс ──────────────────────
 
     def start(self):
+        self.proxy = self._current_proxy()
         self._loop.run_until_complete(self._start())
+
+    def _restart_with_new_proxy(self):
+        """Proxy солиод браузерийг дахин эхлүүлнэ"""
+        tag = f"[bot-{self.worker_id}]"
+        self._proxy_index += 1
+        self.proxy = self._current_proxy()
+        print(f"{tag} ChatGPT proxy солиж байна → {self.proxy.split('@')[-1] if self.proxy else 'None'}")
+        self._loop.run_until_complete(self._teardown())
+        self._loop.run_until_complete(self._start())
+        print(f"{tag} Шинэ proxy-тай браузер бэлэн ✓")
+
 
     def ask(self, prompt: str) -> str:
         return self._loop.run_until_complete(self._ask_prompt(prompt))
@@ -265,13 +287,13 @@ class ChatGPTBot:
         tag = f"[bot-{self.worker_id}]"
         print(f"{tag} Camoufox эхэлж байна...")
 
-        # Worker бүр өөрийн session файлтай
+        # Session файл байвал ашиглана, байхгүй бол нэвтрэхгүйгээр ажиллана
         auth_file = os.path.join(CHROME_PROFILE_DIR, f"auth_state_worker{self.worker_id}.json")
         storage = auth_file if os.path.exists(auth_file) else None
         if storage:
             print(f"{tag} Хадгалсан session ашиглаж байна: {storage}")
         else:
-            print(f"{tag} Шинэ session — нэвтрэх шаардлагатай.")
+            print(f"{tag} Session байхгүй — нэвтрэхгүйгээр ажиллана (5 хүсэлт/IP).")
 
         # Proxy тохиргоо (credentials задлах)
         proxy_config = None
@@ -359,13 +381,15 @@ class ChatGPTBot:
         return False
 
     async def _ask_prompt(self, prompt: str) -> str:
+        # Proxy rotation шалгах
+        if self._proxy_list and self._rotate_every > 0:
+            if self._request_count > 0 and self._request_count % self._rotate_every == 0:
+                self._restart_with_new_proxy()
+
+        self._request_count += 1
+
         for attempt in range(3):
             try:
-                # Промпт илгээхээс өмнө нэвтэрсэн эсэхийг шалгана
-                if not await is_logged_in(self._page):
-                    recovered = await self._recover_session()
-                    if not recovered:
-                        raise RuntimeError("Session сэргээж чадсангүй.")
                 response = await send_prompt(self._page, prompt)
                 if "Something went wrong" in response or "If this issue persists" in response:
                     raise RuntimeError(f"ChatGPT алдаа хуудас буцаалаа: {response[:80]}")
@@ -374,7 +398,6 @@ class ChatGPTBot:
                 print(f"  [bot-{self.worker_id}] {attempt+1}-р оролдлого амжилтгүй: {e}")
                 if attempt < 2:
                     await asyncio.sleep(10)
-                    # Шинэ chat нээж алдааг цэвэрлэнэ
                     try:
                         await self._page.goto(CHATGPT_URL, wait_until="domcontentloaded", timeout=30000)
                         await wait_cloudflare_pass(self._page, timeout=30)

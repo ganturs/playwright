@@ -35,7 +35,11 @@ class Worker:
         self._proxy_index = 0
         self._request_count = 0
 
-        self._bot = ChatGPTBot(worker_id=worker_id, proxy=self._current_proxy())  # ChatGPT: proxy
+        self._bot = ChatGPTBot(
+            worker_id=worker_id,
+            proxy_list=self._proxy_list,
+            rotate_every=rotate_every,
+        )
         self._google = GoogleScraper(max_results=10, proxy=self._current_proxy())
         self._executor = ThreadPoolExecutor(max_workers=2)
         import os
