@@ -12,7 +12,7 @@ SELECTORS = {
     "input": "div#prompt-textarea",
     "send_btn": "button[data-testid='send-button']",
     "stop_btn": "button[data-testid='stop-button']",
-    "response": "div[data-message-author-role='assistant']",
+    "response": "div[data-message-author-role='assistant'], .markdown, [class*='markdown'], .prose",
 }
 
 
@@ -213,10 +213,13 @@ class ChatGPTBot:
                 send_btn = await self._page.query_selector(SELECTORS["send_btn"])
                 if send_btn:
                     await send_btn.click()
+                    print(f"  [bot] Send товч дарлаа ✓")
                 else:
                     await input_box.send_keys("\n")
+                    print(f"  [bot] Enter дарлаа ✓")
 
                 print(f"  [bot] Промпт илгээлээ: {prompt[:50]}...")
+                await self._page.save_screenshot(f"debug_sent_worker{self.worker_id}.png")
 
                 # Stop button гарах хүртэл хүлээх
                 stop_appeared = False
