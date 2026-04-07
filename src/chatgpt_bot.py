@@ -131,17 +131,38 @@ class ChatGPTBot:
 
         print(f"{tag} Бэлэн болоо ✓")
 
+    async def _is_login_screen(self) -> bool:
+        """Login screen байгаа эсэхийг шалгана"""
+        try:
+            el = await self._page.query_selector(
+                "button[data-testid='login-button'], a[href='/auth/login'], input[name='email']"
+            )
+            return el is not None
+        except Exception:
+            return False
+
+    async def _restart_with_new_proxy_async(self):
+        """Proxy солиод browser дахин эхлүүлнэ"""
+        tag = f"[bot-{self.worker_id}]"
+        self._proxy_index += 1
+        self.proxy = self._current_proxy()
+        print(f"{tag} Login screen → proxy солиж байна → {self.proxy.split('@')[-1] if self.proxy else 'None'}")
+        await self._teardown()
+        await self._start()
+        print(f"{tag} Шинэ browser бэлэн ✓")
+
     async def _ask_prompt(self, prompt: str) -> str:
         tag = f"[bot-{self.worker_id}]"
-
-        # Proxy rotation
-        if self._proxy_list and self._rotate_every > 0:
-            if self._request_count > 0 and self._request_count % self._rotate_every == 0:
-                self._restart_with_new_proxy()
         self._request_count += 1
 
         for attempt in range(3):
             try:
+                # Login screen илрвэл proxy солиод restart
+                if await self._is_login_screen():
+                    print(f"{tag} Login screen илрлээ (attempt {attempt+1}) — proxy солиж байна...")
+                    await self._restart_with_new_proxy_async()
+                    await asyncio.sleep(3)
+
                 # Input талбар олох (30s хүлээх)
                 input_box = None
                 for _ in range(30):
@@ -150,16 +171,6 @@ class ChatGPTBot:
                         break
                     await asyncio.sleep(1)
 
-                if not input_box:
-                    # ChatGPT нэвтрэхийг шаардаж байвал "Stay logged out" дарна
-                    try:
-                        stay_out = await self._page.find("Stay logged out", timeout=3)
-                        if stay_out:
-                            await stay_out.click()
-                            await asyncio.sleep(2)
-                            input_box = await self._page.query_selector(SELECTORS["input"])
-                    except Exception:
-                        pass
                 if not input_box:
                     await self._page.save_screenshot(f"debug_no_input_worker{self.worker_id}.png")
                     raise RuntimeError("Input талбар олдсонгүй.")
