@@ -13,7 +13,7 @@ HTML = """
 <html lang="mn">
 <head>
   <meta charset="UTF-8">
-  <title>Crawler Dashboard</title>
+  <title>ダッシュボード</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: sans-serif; background: #f4f4f4; padding: 24px; }
@@ -42,23 +42,23 @@ HTML = """
   </style>
 </head>
 <body>
-  <h1>Crawler Dashboard</h1>
-  <p class="updated" id="updated">Шинэчлэж байна...</p>
+  <h1>ダッシュボード</h1>
+  <p class="updated" id="updated">更新中...</p>
   <div class="cards">
-    <div class="card"><div class="num total" id="c-total">-</div><div class="label">Нийт</div></div>
-    <div class="card"><div class="num done" id="c-done">-</div><div class="label">Амжилттай</div></div>
-    <div class="card"><div class="num error" id="c-error">-</div><div class="label">Алдаа</div></div>
-    <div class="card"><div class="num pending" id="c-pending">-</div><div class="label">Хүлээгдэж буй</div></div>
-    <div class="card"><div class="num total" id="c-progress">-</div><div class="label">Гүйцэтгэл</div></div>
+    <div class="card"><div class="num total" id="c-total">-</div><div class="label">合計</div></div>
+    <div class="card"><div class="num done" id="c-done">-</div><div class="label">成功</div></div>
+    <div class="card"><div class="num error" id="c-error">-</div><div class="label">エラー</div></div>
+    <div class="card"><div class="num pending" id="c-pending">-</div><div class="label">処理待ち</div></div>
+    <div class="card"><div class="num total" id="c-progress">-</div><div class="label">実行中</div></div>
   </div>
   <table>
     <thead>
       <tr>
         <th>#</th>
         <th>Prompt</th>
-        <th>ChatGPT хариулт</th>
-        <th>Статус</th>
-        <th>Огноо</th>
+        <th>ChatGPT 回答 / エラー</th>
+        <th>ステータス</th>
+        <th>日付</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -82,11 +82,13 @@ HTML = """
         knownIds.add(r.sheet_row);
         const tr = document.createElement('tr');
         const prompt = r.prompt ? r.prompt.substring(0, 60) + (r.prompt.length > 60 ? '...' : '') : '';
-        const response = r.response ? r.response.substring(0, 80) + (r.response.length > 80 ? '...' : '') : '';
+        const display = r.status === 'error' ? (r.error_message || '') : (r.response || '');
+        const displayShort = display.substring(0, 80) + (display.length > 80 ? '...' : '');
+        const cellStyle = r.status === 'error' ? ' style="color:#dc2626"' : '';
         tr.innerHTML = `
           <td>${r.sheet_row}</td>
           <td title="${r.prompt || ''}">${prompt}</td>
-          <td title="${r.response || ''}">${response}</td>
+          <td title="${display}"${cellStyle}>${displayShort}</td>
           <td><span class="badge badge-${r.status}">${r.status}</span></td>
           <td>${r.created_at || ''}</td>
         `;
@@ -120,7 +122,7 @@ def get_data():
     total = cur.fetchone()["total"]
     cur.execute("SELECT status, COUNT(*) as cnt FROM responses GROUP BY status")
     counts = {r["status"]: r["cnt"] for r in cur.fetchall()}
-    cur.execute("SELECT sheet_row, prompt, response, status, created_at FROM responses ORDER BY id DESC LIMIT 100")
+    cur.execute("SELECT sheet_row, prompt, response, error_message, status, created_at FROM responses ORDER BY id DESC LIMIT 100")
     rows = cur.fetchall()
     for r in rows:
         if r.get("created_at"):
