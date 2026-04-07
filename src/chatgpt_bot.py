@@ -193,21 +193,23 @@ class ChatGPTBot:
                         stop = await self._page.query_selector(SELECTORS["stop_btn"])
                         if not stop:
                             break
-                        await asyncio.sleep(2)
+                        await asyncio.sleep(3)
+                    # ChatGPT render дуусахыг хүлээх
+                    await asyncio.sleep(5)
                 else:
-                    await asyncio.sleep(20)
+                    await asyncio.sleep(30)
 
                 # Хариулт унших
-                for _ in range(5):
+                import re
+                for _ in range(8):
                     elements = await self._page.query_selector_all(SELECTORS["response"])
                     if elements:
                         text = await elements[-1].get_html()
-                        if text and len(text.strip()) > 10:
-                            # HTML tag хасах
-                            import re
+                        if text:
                             text = re.sub(r"<[^>]+>", "", text).strip()
-                            return text
-                    await asyncio.sleep(2)
+                            if len(text) > 10:
+                                return text
+                    await asyncio.sleep(3)
 
                 raise RuntimeError("Хоосон хариу ирлээ.")
 
