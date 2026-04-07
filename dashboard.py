@@ -92,7 +92,7 @@ HTML = """
           <td><span class="badge badge-${r.status}">${r.status}</span></td>
           <td>${r.created_at || ''}</td>
         `;
-        tbody.insertBefore(tr, tbody.firstChild);
+        tbody.appendChild(tr);
       });
     }
 
@@ -103,7 +103,7 @@ HTML = """
         updateStats(data.stats);
         addRows(data.rows);
         const now = new Date().toLocaleTimeString();
-        document.getElementById('updated').textContent = 'Сүүлд шинэчлэгдсэн: ' + now;
+        document.getElementById('updated').textContent = '最終更新日: ' + now;
       } catch(e) {}
     }
 
