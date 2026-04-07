@@ -291,21 +291,30 @@ class ChatGPTBot:
 
                 print(f"  {tag} stop_appeared={stop_appeared}")
 
-                # Stop button алга болох хүртэл хүлээх
+                # Stop button алга болох хүртэл хүлээх — streaming дуусахыг хүлээх
+                import re
+                last_text = ""
                 if stop_appeared:
                     for _ in range(90):
                         stop = await self._page.query_selector(SELECTORS["stop_btn"])
+                        # Streaming үед response уншиж авах
+                        els = await self._page.query_selector_all(SELECTORS["response"])
+                        if els:
+                            raw = await els[-1].get_html()
+                            if raw:
+                                last_text = re.sub(r"<[^>]+>", "", raw).strip()
                         if not stop:
                             break
-                        await asyncio.sleep(3)
-                    await asyncio.sleep(5)
+                        await asyncio.sleep(2)
+                    await asyncio.sleep(3)
                 else:
                     await asyncio.sleep(60)
 
-                await self._page.save_screenshot(f"debug_after_wait_worker{self.worker_id}.png")
+                # Streaming үед авсан текст байвал шууд буцаана
+                if last_text and len(last_text) > 10:
+                    return last_text
 
                 # Хариулт унших
-                import re
                 for i in range(8):
                     elements = await self._page.query_selector_all(SELECTORS["response"])
                     print(f"  {tag} Хариулт хайж байна ({i+1}/8): {len(elements)} элемент олдлоо")
