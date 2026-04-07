@@ -142,12 +142,13 @@ class ChatGPTBot:
         print(f"{tag} Бэлэн болоо ✓")
 
     async def _is_login_screen(self) -> bool:
-        """Login screen байгаа эсэхийг шалгана"""
+        """Input box байхгүй + email input байвал л login screen гэж үзнэ"""
         try:
-            el = await self._page.query_selector(
-                "button[data-testid='login-button'], a[href='/auth/login'], input[name='email']"
-            )
-            return el is not None
+            input_box = await self._page.query_selector(SELECTORS["input"])
+            if input_box:
+                return False
+            email_input = await self._page.query_selector("input[name='email'], input[type='email']")
+            return email_input is not None
         except Exception:
             return False
 
@@ -165,11 +166,31 @@ class ChatGPTBot:
 
         for attempt in range(3):
             try:
-                # Login screen илрвэл proxy солиод restart
+                # Login screen илрвэл эхлээд "Stay logged out" дарж үзнэ
                 if await self._is_login_screen():
-                    print(f"{tag} Login screen илрлээ (attempt {attempt+1}) — proxy солиж байна...")
-                    await self._restart_with_new_proxy_async()
-                    await asyncio.sleep(3)
+                    print(f"{tag} Login screen илрлээ (attempt {attempt+1}) — Stay logged out дарж байна...")
+                    dismissed = False
+                    for selector in [
+                        "button[data-testid='stay-logged-out-button']",
+                        "a[data-testid='stay-logged-out']",
+                        "button:has-text('Stay logged out')",
+                        "//button[contains(text(),'Stay logged out')]",
+                        "//a[contains(text(),'Stay logged out')]",
+                    ]:
+                        try:
+                            btn = await self._page.query_selector(selector)
+                            if btn:
+                                await btn.click()
+                                await asyncio.sleep(2)
+                                dismissed = True
+                                print(f"{tag} Stay logged out дарлаа ✓")
+                                break
+                        except Exception:
+                            pass
+                    if not dismissed:
+                        print(f"{tag} Stay logged out олдсонгүй — browser restart хийж байна...")
+                        await self._restart_with_new_proxy_async()
+                        await asyncio.sleep(3)
 
                 # Input талбар олох (30s хүлээх)
                 input_box = None
