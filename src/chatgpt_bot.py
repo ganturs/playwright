@@ -201,16 +201,20 @@ class ChatGPTBot:
 
                 # Хариулт унших
                 import re
-                for _ in range(8):
+                for i in range(8):
                     elements = await self._page.query_selector_all(SELECTORS["response"])
+                    print(f"  {tag} Хариулт хайж байна ({i+1}/8): {len(elements)} элемент олдлоо")
                     if elements:
-                        text = await elements[-1].get_html()
-                        if text:
-                            text = re.sub(r"<[^>]+>", "", text).strip()
+                        raw = await elements[-1].get_html()
+                        print(f"  {tag} raw html урт: {len(raw) if raw else 0}")
+                        if raw:
+                            text = re.sub(r"<[^>]+>", "", raw).strip()
+                            print(f"  {tag} strip хийсний дараа урт: {len(text)}")
                             if len(text) > 10:
                                 return text
                     await asyncio.sleep(3)
 
+                await self._page.save_screenshot(f"debug_empty_worker{self.worker_id}.png")
                 raise RuntimeError("Хоосон хариу ирлээ.")
 
             except Exception as e:
