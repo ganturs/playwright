@@ -11,8 +11,8 @@ HEADLESS = os.environ.get("HEADLESS", "true").lower() == "true"
 SELECTORS = {
     "input": "div#prompt-textarea",
     "send_btn": "button[data-testid='send-button']",
-    "stop_btn": "button[data-testid='stop-button']",
-    "response": "div[data-message-author-role='assistant'], .markdown, [class*='markdown'], .prose",
+    "stop_btn": "button[data-testid='stop-button'], button[aria-label='Stop streaming'], button.stop-button",
+    "response": "div[data-message-author-role='assistant']",
 }
 
 
@@ -276,7 +276,14 @@ class ChatGPTBot:
                     if stop:
                         stop_appeared = True
                         break
+                    # Stop button олдохгүй ч response гарсан бол дуусчихсан
+                    els = await self._page.query_selector_all(SELECTORS["response"])
+                    if els:
+                        stop_appeared = True
+                        break
                     await asyncio.sleep(2)
+
+                print(f"  {tag} stop_appeared={stop_appeared}")
 
                 # Stop button алга болох хүртэл хүлээх
                 if stop_appeared:
@@ -285,10 +292,11 @@ class ChatGPTBot:
                         if not stop:
                             break
                         await asyncio.sleep(3)
-                    # ChatGPT render дуусахыг хүлээх
                     await asyncio.sleep(5)
                 else:
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(60)
+
+                await self._page.save_screenshot(f"debug_after_wait_worker{self.worker_id}.png")
 
                 # Хариулт унших
                 import re
