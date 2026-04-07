@@ -1,6 +1,8 @@
 import asyncio
 import os
 import json
+import nest_asyncio
+nest_asyncio.apply()
 import zendriver as uc
 from src.config import CHROME_PROFILE_DIR, CHATGPT_URL
 

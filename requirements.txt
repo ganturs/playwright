@@ -6,6 +6,7 @@ google-auth-oauthlib==1.2.0
 google-api-python-client==2.118.0
 mysql-connector-python==8.3.0
 flask>=3.0.0
+nest_asyncio
 python-dotenv==1.0.1
 
 # ─────────────────────────────────────────────
