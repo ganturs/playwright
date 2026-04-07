@@ -159,6 +159,33 @@ class ChatGPTBot:
 
         print(f"{tag} Бэлэн болоо ✓")
 
+    async def _dismiss_cookie_modal(self):
+        for selector in [
+            "button[data-testid='accept-button']",
+            "button[data-testid='reject-button']",
+        ]:
+            try:
+                btn = await self._page.query_selector(selector)
+                if btn:
+                    await btn.click()
+                    await asyncio.sleep(1)
+                    return
+            except Exception:
+                pass
+        # Text-based fallback
+        try:
+            await self._page.evaluate("""
+                const btns = document.querySelectorAll('button');
+                for (const b of btns) {
+                    if (b.textContent.includes('Accept all') || b.textContent.includes('Reject non-essential')) {
+                        b.click(); break;
+                    }
+                }
+            """)
+            await asyncio.sleep(1)
+        except Exception:
+            pass
+
     async def _is_login_screen(self) -> bool:
         """Input box байхгүй + email input байвал л login screen гэж үзнэ"""
         try:
@@ -221,6 +248,9 @@ class ChatGPTBot:
                 if not input_box:
                     await self._page.save_screenshot(f"debug_no_input_worker{self.worker_id}.png")
                     raise RuntimeError("Input талбар олдсонгүй.")
+
+                # Cookie modal байвал dismiss хийнэ
+                await self._dismiss_cookie_modal()
 
                 # Prompt оруулах
                 await input_box.clear_input()
