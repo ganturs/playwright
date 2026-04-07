@@ -89,6 +89,11 @@ class ChatGPTBot:
             "--mute-audio",
             "--no-first-run",
             "--safebrowsing-disable-auto-update",
+            "--disable-background-timer-throttling",
+            "--disable-renderer-backgrounding",
+            "--disable-backgrounding-occluded-windows",
+            "--blink-settings=imagesEnabled=false",
+            "--js-flags=--max-old-space-size=256",
         ]
         self._browser = await uc.start(
             headless=HEADLESS,
@@ -175,20 +180,20 @@ class ChatGPTBot:
 
                 # Stop button гарах хүртэл хүлээх
                 stop_appeared = False
-                for _ in range(30):
+                for _ in range(15):
                     stop = await self._page.query_selector(SELECTORS["stop_btn"])
                     if stop:
                         stop_appeared = True
                         break
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(2)
 
                 # Stop button алга болох хүртэл хүлээх
                 if stop_appeared:
-                    for _ in range(180):
+                    for _ in range(90):
                         stop = await self._page.query_selector(SELECTORS["stop_btn"])
                         if not stop:
                             break
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(2)
                 else:
                     await asyncio.sleep(20)
 
