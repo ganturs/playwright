@@ -209,9 +209,9 @@ class ChatGPTBot:
         tag = f"[bot-{self.worker_id}]"
         self._request_count += 1
 
-        # 2 request тутам browser restart — login redirect гарахаас өмнө
-        if self._request_count > 1 and (self._request_count - 1) % 2 == 0:
-            print(f"{tag} {self._request_count-1} request болсон — browser restart хийж байна...")
+        # Request бүрт browser restart — login redirect гарахаас өмнө шинэ IP авна
+        if self._request_count > 1:
+            print(f"{tag} Browser restart хийж байна (шинэ IP)...")
             await self._teardown()
             await self._start()
 
