@@ -104,6 +104,24 @@ class ChatGPTBot:
         self._page = await self._browser.get(CHATGPT_URL)
         await asyncio.sleep(5)
 
+        # Cookie consent modal dismiss
+        for selector in [
+            "button[data-testid='accept-button']",
+            "button:has-text('Accept all')",
+            "button:has-text('Accept')",
+            "button:has-text('Reject non-essential')",
+            "button:has-text('Got it')",
+        ]:
+            try:
+                btn = await self._page.query_selector(selector)
+                if btn:
+                    await btn.click()
+                    await asyncio.sleep(1)
+                    print(f"{tag} Cookie modal dismiss хийлээ ✓")
+                    break
+            except Exception:
+                pass
+
         # Cookie load — CDP Network.setCookie ашиглан inject хийнэ
         if os.path.exists(auth_file):
             try:
