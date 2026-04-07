@@ -361,7 +361,7 @@ class GoogleScraper:
         print(f"[google] Camoufox эхэлж байна... proxy={proxy_config['server'] if proxy_config else 'None'}")
         self._browser = AsyncCamoufox(
             headless=True,
-            geoip=False,
+            geoip=True,
             os="windows",
             block_images=False,  # True байвал Google CAPTCHA өдөөдөг
             **({"proxy": proxy_config} if proxy_config else {}),

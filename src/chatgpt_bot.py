@@ -219,7 +219,12 @@ class ChatGPTBot:
     async def _teardown(self):
         try:
             if self._browser:
-                self._browser.stop()
+                try:
+                    await self._browser.stop()
+                except TypeError:
+                    self._browser.stop()
+                self._browser = None
+                self._page = None
         except Exception as e:
             print(f"[bot-{self.worker_id}] Хаах үед алдаа: {e}")
 
