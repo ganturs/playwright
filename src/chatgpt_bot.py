@@ -1,15 +1,7 @@
-"""
-chatgpt_bot.py — nodriver + Chrome (Camoufox-оос хөнгөн)
-API ашиглахгүй, Chrome browser automation ашиглана.
-
-Суулгах:
-    pip install nodriver
-"""
-
 import asyncio
 import os
 import json
-import nodriver as uc
+import zendriver as uc
 from src.config import CHROME_PROFILE_DIR, CHATGPT_URL
 
 HEADLESS = os.environ.get("HEADLESS", "true").lower() == "true"
@@ -62,7 +54,7 @@ class ChatGPTBot:
 
     async def _start(self):
         tag = f"[bot-{self.worker_id}]"
-        print(f"{tag} nodriver Chrome эхэлж байна...")
+        print(f"{tag} zenDriver Chrome эхэлж байна...")
 
         # Cookie файл
         auth_file = os.path.join(CHROME_PROFILE_DIR, f"auth_state_worker{self.worker_id}.json")
@@ -74,46 +66,48 @@ class ChatGPTBot:
             proxy_arg = self.proxy
             print(f"{tag} Proxy: {self.proxy.split('@')[-1]}")
 
-        kwargs = dict(
+        browser_args = [
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--disable-extensions",
+            "--disable-background-networking",
+            "--disable-sync",
+            "--disable-translate",
+            "--disable-logging",
+            "--disable-default-apps",
+            "--mute-audio",
+            "--no-first-run",
+            "--safebrowsing-disable-auto-update",
+        ]
+        self._browser = await uc.start(
             headless=HEADLESS,
-            browser_args=[
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--disable-extensions",
-                "--disable-background-networking",
-                "--disable-sync",
-                "--disable-translate",
-                "--disable-logging",
-                "--disable-default-apps",
-                "--mute-audio",
-                "--no-first-run",
-                "--safebrowsing-disable-auto-update",
-            ],
+            no_sandbox=True,
+            browser_args=browser_args,
         )
-        if proxy_arg:
-            kwargs["browser_args"].append(f"--proxy-server={proxy_arg.split('://')[-1].split('@')[-1]}")
 
-        self._browser = await uc.start(**kwargs)
         self._page = await self._browser.get(CHATGPT_URL)
-        await asyncio.sleep(3)
+        await asyncio.sleep(5)
 
         # Cookie load
         if os.path.exists(auth_file):
             try:
                 cookies = json.load(open(auth_file)).get("cookies", [])
                 for c in cookies:
-                    await self._page.send(
-                        "Network.setCookie",
-                        name=c["name"],
-                        value=c["value"],
-                        domain=c.get("domain", ".chatgpt.com"),
-                        path=c.get("path", "/"),
-                        httpOnly=c.get("httpOnly", False),
-                        secure=c.get("secure", False),
-                    )
+                    try:
+                        await self._page.send(
+                            "Network.setCookie",
+                            name=c.get("name", ""),
+                            value=c.get("value", ""),
+                            domain=c.get("domain", ""),
+                            path=c.get("path", "/"),
+                            secure=c.get("secure", False),
+                            httpOnly=c.get("httpOnly", False),
+                        )
+                    except Exception:
+                        pass
                 await self._page.get(CHATGPT_URL)
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
                 print(f"{tag} Cookies load хийлээ ✓")
             except Exception as e:
                 print(f"{tag} Cookies load алдаа: {e}")
@@ -133,9 +127,26 @@ class ChatGPTBot:
 
         for attempt in range(3):
             try:
-                # Input талбар олох
-                input_box = await self._page.find(SELECTORS["input"], timeout=10)
+                # Input талбар олох (30s хүлээх)
+                input_box = None
+                for _ in range(30):
+                    input_box = await self._page.query_selector(SELECTORS["input"])
+                    if input_box:
+                        break
+                    await asyncio.sleep(1)
+
                 if not input_box:
+                    # ChatGPT нэвтрэхийг шаардаж байвал "Stay logged out" дарна
+                    try:
+                        stay_out = await self._page.find("Stay logged out", timeout=3)
+                        if stay_out:
+                            await stay_out.click()
+                            await asyncio.sleep(2)
+                            input_box = await self._page.query_selector(SELECTORS["input"])
+                    except Exception:
+                        pass
+                if not input_box:
+                    await self._page.save_screenshot(f"debug_no_input_worker{self.worker_id}.png")
                     raise RuntimeError("Input талбар олдсонгүй.")
 
                 # Prompt оруулах
@@ -144,7 +155,7 @@ class ChatGPTBot:
                 await asyncio.sleep(0.3)
 
                 # Send товч
-                send_btn = await self._page.find(SELECTORS["send_btn"], timeout=5)
+                send_btn = await self._page.query_selector(SELECTORS["send_btn"])
                 if send_btn:
                     await send_btn.click()
                 else:
@@ -155,7 +166,7 @@ class ChatGPTBot:
                 # Stop button гарах хүртэл хүлээх
                 stop_appeared = False
                 for _ in range(30):
-                    stop = await self._page.find(SELECTORS["stop_btn"], timeout=1)
+                    stop = await self._page.query_selector(SELECTORS["stop_btn"])
                     if stop:
                         stop_appeared = True
                         break
@@ -164,7 +175,7 @@ class ChatGPTBot:
                 # Stop button алга болох хүртэл хүлээх
                 if stop_appeared:
                     for _ in range(180):
-                        stop = await self._page.find(SELECTORS["stop_btn"], timeout=1)
+                        stop = await self._page.query_selector(SELECTORS["stop_btn"])
                         if not stop:
                             break
                         await asyncio.sleep(1)
@@ -175,7 +186,7 @@ class ChatGPTBot:
                 for _ in range(5):
                     elements = await self._page.query_selector_all(SELECTORS["response"])
                     if elements:
-                        text = await elements[-1].get_html(strip=True)
+                        text = await elements[-1].get_html()
                         if text and len(text.strip()) > 10:
                             # HTML tag хасах
                             import re

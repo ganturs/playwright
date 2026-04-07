@@ -14,7 +14,7 @@ python-dotenv==1.0.1
 # ─────────────────────────────────────────────
 camoufox[geoip]        # Google scraping
 playwright>=1.42.0     # Camoufox dependency
-nodriver               # ChatGPT bot - Chrome based, low CPU
+zendriver              # ChatGPT bot - Chrome based, low CPU, better Cloudflare bypass
 
 # ─────────────────────────────────────────────
 #  GCP / VM headless орчин
