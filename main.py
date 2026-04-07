@@ -90,7 +90,7 @@ def main():
     #   10 proxy → 2 batch (5+5), 5 worker
     #   worker i → [proxies[i], proxies[i+5]] гэж 2 proxy авна
     #   5 хүсэлт тутам proxy солино
-    ROTATE_EVERY = 5
+    ROTATE_EVERY = 3
     BATCH_SIZE = 5  # нэг batch дахь proxy тоо
 
     if len(proxies) >= BATCH_SIZE * 2:

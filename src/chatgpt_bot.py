@@ -152,11 +152,9 @@ class ChatGPTBot:
             return False
 
     async def _restart_with_new_proxy_async(self):
-        """Proxy солиод browser дахин эхлүүлнэ"""
+        """Browser дахин эхлүүлнэ — Evomi rotating proxy тул IP автоматаар солигдоно"""
         tag = f"[bot-{self.worker_id}]"
-        self._proxy_index += 1
-        self.proxy = self._current_proxy()
-        print(f"{tag} Login screen → proxy солиж байна → {self.proxy.split('@')[-1] if self.proxy else 'None'}")
+        print(f"{tag} Login screen → browser restart хийж байна (IP автоматаар солигдоно)...")
         await self._teardown()
         await self._start()
         print(f"{tag} Шинэ browser бэлэн ✓")
