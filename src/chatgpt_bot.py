@@ -104,30 +104,34 @@ class ChatGPTBot:
         self._page = await self._browser.get(CHATGPT_URL)
         await asyncio.sleep(5)
 
-        # Cookie load — JS document.cookie ашиглан inject хийнэ
+        # Cookie load — CDP Network.setCookie ашиглан inject хийнэ
         if os.path.exists(auth_file):
             try:
                 cookies = json.load(open(auth_file)).get("cookies", [])
-                js_parts = []
                 for c in cookies:
-                    name = json.dumps(c.get("name", ""))
-                    value = json.dumps(c.get("value", ""))
-                    domain = json.dumps(c.get("domain", ""))
-                    path = json.dumps(c.get("path", "/"))
-                    js_parts.append(
-                        f'document.cookie = {name} + "=" + {value} + "; path=" + {path} + "; domain=" + {domain};'
-                    )
-                if js_parts:
-                    await self._page.evaluate("\n".join(js_parts))
-                await asyncio.sleep(1)
+                    try:
+                        params = {
+                            "name": c.get("name", ""),
+                            "value": c.get("value", ""),
+                            "domain": c.get("domain", ""),
+                            "path": c.get("path", "/"),
+                            "secure": c.get("secure", False),
+                            "httpOnly": c.get("httpOnly", False),
+                        }
+                        if c.get("expirationDate"):
+                            params["expires"] = int(c["expirationDate"])
+                        await self._browser.connection.send(
+                            "Network.setCookie", **params
+                        )
+                    except Exception:
+                        pass
                 await self._page.get(CHATGPT_URL)
                 await asyncio.sleep(5)
-                # Login screen байхгүй бол амжилттай
                 login_check = await self._page.query_selector(
                     "button[data-testid='login-button'], a[href='/auth/login'], input[name='email']"
                 )
                 if login_check:
-                    print(f"{tag} Cookies inject хийсэн ч login screen байна — нэвтрэхгүйгээр үргэлжлүүлнэ.")
+                    print(f"{tag} Cookies inject хийсэн ч login screen байна.")
                 else:
                     print(f"{tag} Cookies load хийлээ ✓")
             except Exception as e:
