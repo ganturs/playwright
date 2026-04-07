@@ -25,7 +25,13 @@ class ChatGPTBot:
         self._request_count = 0
         self._browser = None
         self._page = None
-        self._loop = asyncio.new_event_loop()
+        self._loop = None
+
+    def _get_loop(self):
+        if self._loop is None or self._loop.is_closed():
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+        return self._loop
 
     def _current_proxy(self) -> str | None:
         if not self._proxy_list:
@@ -34,22 +40,24 @@ class ChatGPTBot:
 
     def start(self):
         self.proxy = self._current_proxy()
-        self._loop.run_until_complete(self._start())
+        self._get_loop().run_until_complete(self._start())
 
     def ask(self, prompt: str) -> str:
-        return self._loop.run_until_complete(self._ask_prompt(prompt))
+        return self._get_loop().run_until_complete(self._ask_prompt(prompt))
 
     def close(self):
-        self._loop.run_until_complete(self._teardown())
-        self._loop.close()
+        loop = self._get_loop()
+        loop.run_until_complete(self._teardown())
+        loop.close()
+        self._loop = None
 
     def _restart_with_new_proxy(self):
         tag = f"[bot-{self.worker_id}]"
         self._proxy_index += 1
         self.proxy = self._current_proxy()
         print(f"{tag} Proxy солиж байна → {self.proxy.split('@')[-1] if self.proxy else 'None'}")
-        self._loop.run_until_complete(self._teardown())
-        self._loop.run_until_complete(self._start())
+        self._get_loop().run_until_complete(self._teardown())
+        self._get_loop().run_until_complete(self._start())
         print(f"{tag} Шинэ proxy-тай браузер бэлэн ✓")
 
     async def _start(self):
