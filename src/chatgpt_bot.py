@@ -209,6 +209,12 @@ class ChatGPTBot:
         tag = f"[bot-{self.worker_id}]"
         self._request_count += 1
 
+        # 2 request тутам browser restart — login redirect гарахаас өмнө
+        if self._request_count > 1 and (self._request_count - 1) % 2 == 0:
+            print(f"{tag} {self._request_count-1} request болсон — browser restart хийж байна...")
+            await self._teardown()
+            await self._start()
+
         for attempt in range(3):
             try:
                 # Login screen илрвэл эхлээд "Stay logged out" дарж үзнэ
