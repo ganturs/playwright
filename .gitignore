@@ -2,6 +2,7 @@
 credentials.json
 .env
 *.json.key
+proxies.txt
 
 # Python
 __pycache__/
