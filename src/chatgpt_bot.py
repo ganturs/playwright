@@ -110,13 +110,12 @@ class ChatGPTBot:
                 cookies = json.load(open(auth_file)).get("cookies", [])
                 js_parts = []
                 for c in cookies:
-                    name = c.get("name", "")
-                    value = c.get("value", "")
-                    domain = c.get("domain", "")
-                    path = c.get("path", "/")
-                    # JS-д хэрэглэх боломжтой cookie-г inject хийнэ
+                    name = json.dumps(c.get("name", ""))
+                    value = json.dumps(c.get("value", ""))
+                    domain = json.dumps(c.get("domain", ""))
+                    path = json.dumps(c.get("path", "/"))
                     js_parts.append(
-                        f'document.cookie = "{name}={value}; path={path}; domain={domain}";'
+                        f'document.cookie = {name} + "=" + {value} + "; path=" + {path} + "; domain=" + {domain};'
                     )
                 if js_parts:
                     await self._page.evaluate("\n".join(js_parts))
