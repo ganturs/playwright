@@ -71,11 +71,6 @@ class ChatGPTBot:
         self._auth_file = auth_file
 
         # Proxy тохиргоо
-        proxy_arg = None
-        if self.proxy:
-            proxy_arg = self.proxy
-            print(f"{tag} Proxy: {self.proxy.split('@')[-1]}")
-
         browser_args = [
             "--no-sandbox",
             "--disable-dev-shm-usage",
@@ -95,11 +90,15 @@ class ChatGPTBot:
             "--blink-settings=imagesEnabled=false",
             "--js-flags=--max-old-space-size=256",
         ]
+        if self.proxy:
+            print(f"{tag} Proxy: {self.proxy.split('@')[-1]}")
+
         self._browser = await uc.start(
             headless=HEADLESS,
             no_sandbox=True,
             browser_args=browser_args,
         )
+
 
         self._page = await self._browser.get(CHATGPT_URL)
         await asyncio.sleep(5)
@@ -206,6 +205,7 @@ class ChatGPTBot:
         print(f"{tag} Шинэ browser бэлэн ✓")
 
     async def _ask_prompt(self, prompt: str) -> str:
+        import re
         tag = f"[bot-{self.worker_id}]"
         self._request_count += 1
 
@@ -217,38 +217,23 @@ class ChatGPTBot:
 
         for attempt in range(3):
             try:
-                # Login screen илрвэл эхлээд "Stay logged out" дарж үзнэ
+                # Login screen илрвэл browser restart хийнэ
                 if await self._is_login_screen():
-                    print(f"{tag} Login screen илрлээ (attempt {attempt+1}) — Stay logged out дарж байна...")
-                    dismissed = False
-                    for selector in [
-                        "button[data-testid='stay-logged-out-button']",
-                        "a[data-testid='stay-logged-out']",
-                        "button:has-text('Stay logged out')",
-                        "//button[contains(text(),'Stay logged out')]",
-                        "//a[contains(text(),'Stay logged out')]",
-                    ]:
-                        try:
-                            btn = await self._page.query_selector(selector)
-                            if btn:
-                                await btn.click()
-                                await asyncio.sleep(2)
-                                dismissed = True
-                                print(f"{tag} Stay logged out дарлаа ✓")
-                                break
-                        except Exception:
-                            pass
-                    if not dismissed:
-                        print(f"{tag} Stay logged out олдсонгүй — browser restart хийж байна...")
-                        await self._restart_with_new_proxy_async()
-                        await asyncio.sleep(3)
+                    print(f"{tag} Login screen илрлээ (attempt {attempt+1}) — browser restart...")
+                    await self._restart_with_new_proxy_async()
+                    await asyncio.sleep(3)
+                    if await self._is_login_screen():
+                        raise RuntimeError("Login screen давж гарсангүй.")
 
-                # Input талбар олох (30s хүлээх)
+                # Input талбар олох (45s хүлээх)
                 input_box = None
-                for _ in range(30):
+                for _ in range(45):
                     input_box = await self._page.query_selector(SELECTORS["input"])
                     if input_box:
                         break
+                    # Login screen дахин гарвал restart
+                    if await self._is_login_screen():
+                        raise RuntimeError("Input хүлээх үед login screen гарлаа.")
                     await asyncio.sleep(1)
 
                 if not input_box:
@@ -258,10 +243,16 @@ class ChatGPTBot:
                 # Cookie modal байвал dismiss хийнэ
                 await self._dismiss_cookie_modal()
 
-                # Prompt оруулах
-                await input_box.clear_input()
-                await input_box.send_keys(prompt)
-                await asyncio.sleep(0.3)
+                # Prompt оруулах — JS-ээр оруулах нь contenteditable div-д найдвартай
+                escaped = prompt.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+                await self._page.evaluate(f"""
+                    const el = document.querySelector('{SELECTORS["input"]}');
+                    if (el) {{
+                        el.focus();
+                        document.execCommand('insertText', false, `{escaped}`);
+                    }}
+                """)
+                await asyncio.sleep(0.5)
 
                 # Send товч
                 send_btn = await self._page.query_selector(SELECTORS["send_btn"])
@@ -275,14 +266,13 @@ class ChatGPTBot:
                 print(f"  [bot] Промпт илгээлээ: {prompt[:50]}...")
                 await self._page.save_screenshot(f"debug_sent_worker{self.worker_id}.png")
 
-                # Stop button гарах хүртэл хүлээх
+                # Stop button гарах хүртэл хүлээх (30s)
                 stop_appeared = False
                 for _ in range(15):
                     stop = await self._page.query_selector(SELECTORS["stop_btn"])
                     if stop:
                         stop_appeared = True
                         break
-                    # Stop button олдохгүй ч response гарсан бол дуусчихсан
                     els = await self._page.query_selector_all(SELECTORS["response"])
                     if els:
                         stop_appeared = True
@@ -292,29 +282,39 @@ class ChatGPTBot:
                 print(f"  {tag} stop_appeared={stop_appeared}")
 
                 # Stop button алга болох хүртэл хүлээх — streaming дуусахыг хүлээх
-                import re
                 last_text = ""
                 if stop_appeared:
                     for _ in range(90):
                         stop = await self._page.query_selector(SELECTORS["stop_btn"])
-                        # Streaming үед response уншиж авах
                         els = await self._page.query_selector_all(SELECTORS["response"])
                         if els:
                             raw = await els[-1].get_html()
                             if raw:
-                                last_text = re.sub(r"<[^>]+>", "", raw).strip()
+                                text = re.sub(r"<[^>]+>", "", raw).strip()
+                                if len(text) > len(last_text):
+                                    last_text = text
                         if not stop:
                             break
                         await asyncio.sleep(2)
                     await asyncio.sleep(3)
                 else:
-                    await asyncio.sleep(60)
+                    # Stop button гараагүй ч response байж болно — 30s хүлээх
+                    for _ in range(15):
+                        els = await self._page.query_selector_all(SELECTORS["response"])
+                        if els:
+                            raw = await els[-1].get_html()
+                            if raw:
+                                text = re.sub(r"<[^>]+>", "", raw).strip()
+                                if len(text) > 10:
+                                    last_text = text
+                                    break
+                        await asyncio.sleep(2)
 
                 # Streaming үед авсан текст байвал шууд буцаана
                 if last_text and len(last_text) > 10:
                     return last_text
 
-                # Хариулт унших
+                # Нэмэлт оролдлого — хариулт унших
                 for i in range(8):
                     elements = await self._page.query_selector_all(SELECTORS["response"])
                     print(f"  {tag} Хариулт хайж байна ({i+1}/8): {len(elements)} элемент олдлоо")
@@ -336,8 +336,8 @@ class ChatGPTBot:
                 if attempt < 2:
                     await asyncio.sleep(10)
                     try:
-                        await self._page.get(CHATGPT_URL)
-                        await asyncio.sleep(3)
+                        await self._teardown()
+                        await self._start()
                     except Exception:
                         pass
 

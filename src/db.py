@@ -10,6 +10,7 @@ def get_connection():
         user=DB_USER,
         password=DB_PASSWORD,
         charset="utf8mb4",
+        ssl_disabled=True,
     )
 
 
